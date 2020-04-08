@@ -29,7 +29,7 @@ protocol.routing_table NHopRoutingTable
 }
 protocol.router DHTRouterRandomGreedy
 {
-    route_storage_file -
+    route_storage_file sample-output.txt
 }
 protocol.dht DHTProtocol
 {
@@ -38,11 +38,18 @@ protocol.dht DHTProtocol
     router router
     routing_table routing_table
 }
+protocol.flashcrowd FlashcrowdProtocol
+{
+    dht dht
+    topology ovr
+}
 
 ##### Initialization #####
 init.nw InitNetwork
 {
-    protocol ovr
+    protocol flashcrowd
+    topology ovr
+    dht dht
 }
 
 ##### Control #####

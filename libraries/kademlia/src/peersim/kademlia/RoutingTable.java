@@ -1,8 +1,7 @@
 package peersim.kademlia;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Gives an implementation for the rounting table component of a kademlia node
@@ -98,6 +97,30 @@ public class RoutingTable implements Cloneable {
 			k_buckets.put(i, new KBucket());// (KBucket) k_buckets.get(i).clone());
 		}
 		return dolly;
+	}
+
+	/**
+	 * returns the neighbour counts
+	 *
+	 * @return int
+	 */
+	public int degree() {
+		int size = 0;
+		for (int i = 0; i < k_buckets.size(); i++)
+			size += k_buckets.get(i).neighbours.size();
+		return size;
+	}
+
+	/**
+	 * returns the neighbour set
+	 *
+	 * @return Set<BigInteger>
+	 */
+	public Set<BigInteger> neighbourSet() {
+		Set<BigInteger> result = new HashSet<>(degree());
+		for (int i = 0; i < k_buckets.size(); i++)
+				result.addAll(k_buckets.get(i).neighbours.keySet());
+		return result;
 	}
 
 	// ______________________________________________________________________________________________

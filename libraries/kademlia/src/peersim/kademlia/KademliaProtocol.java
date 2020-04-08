@@ -33,7 +33,7 @@ public class KademliaProtocol implements Cloneable, EDProtocol {
 	private static String prefix = null;
 	private UnreliableTransport transport;
 	private int tid;
-	private int kademliaid;
+	protected int kademliaid;
 
 	/**
 	 * allow to call the service initializer only once
@@ -53,7 +53,7 @@ public class KademliaProtocol implements Cloneable, EDProtocol {
 	/**
 	 * trace message sent for timeout purpose
 	 */
-	private TreeMap<Long, Long> sentMsg;
+	protected TreeMap<Long, Long> sentMsg;
 
 	/**
 	 * find operations set
@@ -117,7 +117,7 @@ public class KademliaProtocol implements Cloneable, EDProtocol {
 	 *            BigInteger
 	 * @return Node
 	 */
-	private Node nodeIdtoNode(BigInteger searchNodeId) {
+	protected Node nodeIdtoNode(BigInteger searchNodeId) {
 		if (searchNodeId == null)
 			return null;
 
@@ -373,7 +373,6 @@ public class KademliaProtocol implements Cloneable, EDProtocol {
 				break;
 
 		}
-
 	}
 
 	/**
