@@ -1,0 +1,76 @@
+##### Variables #####
+SECOND 1000
+
+##### Global Simulation Parameters #####
+random.seed 1234567890
+simulation.experiments 1
+simulation.endtime 60 * SECOND
+simulation.logtime 5 * SECOND
+network.size 1000
+
+##### Protocols #####
+protocol.urt UniformRandomTransport
+{
+    mindelay 45
+    maxdelay 55
+}
+protocol.tr UnreliableTransport
+{
+    transport urt
+    drop 0
+}
+protocol.ovr RoutingProtocol
+{
+    transport tr
+}
+protocol.routing_table NHopRoutingTable
+{
+    hops 1
+}
+protocol.router DHTRouterRandomGreedy
+{
+    route_storage_file -
+}
+protocol.dht DHTProtocol
+{
+    topology ovr
+    transport urt
+    router router
+    routing_table routing_table
+}
+
+##### Initialization #####
+init.nw InitNetwork
+{
+    protocol ovr
+}
+
+##### Control #####
+control.generator TrafficGenerator
+{
+    protocol ovr
+    step SECOND
+    from 1000
+    until 50000
+}
+#control.observer MessageHopObserver
+#control.observer.protocol ovr
+#control.observer.step 5 * SECOND
+
+##### Network Churn #####
+control.churn DynamicNetwork
+{
+    add 10
+    add -5
+    maxsize 2000
+    step SECOND
+    init.0 InitNode
+    {
+        protocol ovr
+    }
+}
+
+##### Livestream P2P #####
+btp.stream.substreams 7
+btp.system.init_capacity 10
+btp.peer.capacity 6
