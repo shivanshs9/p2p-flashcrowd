@@ -6,7 +6,7 @@ random.seed 1234567890
 simulation.experiments 1
 simulation.endtime 60 * SECOND
 simulation.logtime 5 * SECOND
-network.size 1000
+network.size 100
 
 ##### Protocols #####
 protocol.urt UniformRandomTransport
@@ -19,63 +19,51 @@ protocol.tr UnreliableTransport
     transport urt
     drop 0
 }
-protocol.ovr RoutingProtocol
+protocol.dht KademliaProtocol
 {
     transport tr
-}
-protocol.routing_table NHopRoutingTable
-{
-    hops 1
-}
-protocol.router DHTRouterRandomGreedy
-{
-    route_storage_file sample-output.txt
-}
-protocol.dht DHTProtocol
-{
-    topology ovr
-    transport urt
-    router router
-    routing_table routing_table
 }
 protocol.flashcrowd FlashcrowdProtocol
 {
     dht dht
-    topology ovr
 }
 
 ##### Initialization #####
+init.nodeId CustomDistribution
+{
+    protocol dht
+}
+init.state StateBuilder
+{
+    protocol dht
+}
 init.nw InitNetwork
 {
     protocol flashcrowd
-    topology ovr
     dht dht
 }
 
 ##### Control #####
 control.generator TrafficGenerator
 {
-    protocol ovr
+    protocol dht
     step SECOND
     from 1000
     until 50000
 }
-#control.observer MessageHopObserver
-#control.observer.protocol ovr
-#control.observer.step 5 * SECOND
 
 ##### Network Churn #####
-control.churn DynamicNetwork
-{
-    add 10
-    add -5
-    maxsize 2000
-    step SECOND
-    init.0 InitNode
-    {
-        protocol ovr
-    }
-}
+#control.churn Turbulence
+#{
+#    protocol dht
+#    transport tr
+#    maxsize 2000
+#    step SECOND
+#    init.0 InitNode
+#    {
+#        protocol ovr
+#    }
+#}
 
 ##### Livestream P2P #####
 btp.stream.substreams 7
