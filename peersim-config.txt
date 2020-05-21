@@ -6,7 +6,7 @@ random.seed 1234567890
 simulation.experiments 1
 simulation.endtime 60 * SECOND
 simulation.logtime 5 * SECOND
-network.size 100
+network.size 1
 
 ##### Protocols #####
 protocol.urt UniformRandomTransport
@@ -53,17 +53,17 @@ control.generator TrafficGenerator
 }
 
 ##### Network Churn #####
-#control.churn Turbulence
-#{
-#    protocol dht
-#    transport tr
-#    maxsize 2000
-#    step SECOND
-#    init.0 InitNode
-#    {
-#        protocol ovr
-#    }
-#}
+control.churn Turbulence
+{
+    protocol dht
+    transport tr
+    maxsize 2000
+    step SECOND
+    init.0 InitNode
+    {
+        protocol dht
+    }
+}
 
 ##### Livestream P2P #####
 btp.stream.substreams 7
