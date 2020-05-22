@@ -24,8 +24,8 @@ class InitNetwork(val prefix: String) : Control {
         val msg1 = FindValueOperation(pid, kademliaProtocol.nodeId, "xyz")
         //println(msg1)
         val msg2 = StoreValueOperation(pid, kademliaProtocol.nodeId, "xyz", a)
-        EDSimulator.add(1000, msg1, node, dhtPid)
-        EDSimulator.add(3000, msg2, node, dhtPid)
+//        EDSimulator.add(1000, msg1, node, dhtPid)
+//        EDSimulator.add(3000, msg2, node, dhtPid)
         //EDSimulator.add(10000, msg3, node2, dhtPid)
         return false
     }

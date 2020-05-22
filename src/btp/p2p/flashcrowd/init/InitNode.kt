@@ -1,5 +1,7 @@
 package btp.p2p.flashcrowd.init
 
+import btp.p2p.flashcrowd.MsgTypes
+import btp.p2p.flashcrowd.protocols.GlobalProt
 import peersim.config.Configuration
 import peersim.core.CommonState
 import peersim.core.Network
@@ -10,6 +12,7 @@ import peersim.kademlia.KademliaCommonConfig
 import peersim.kademlia.KademliaProtocol
 import peersim.kademlia.UniformRandomGenerator
 import peersim.kademlia.rpc.FindValueOperation
+import peersim.kademlia.rpc.StoreValueOperation
 import kotlin.math.floor
 import kotlin.math.log10
 
@@ -17,6 +20,7 @@ import kotlin.math.log10
 class InitNode(prefix: String) : NodeInitializer {
     private val pid: Int = Configuration.getPid("$prefix.$PAR_PROT")
     private val dhtPid: Int = Configuration.getPid("$prefix.$PAR_DHT")
+    private val listid: Int = Configuration.getPid("$prefix.$PAR_LIST")
 
     private fun getlevel(rank: Int):Int{
 
@@ -26,12 +30,18 @@ class InitNode(prefix: String) : NodeInitializer {
     override fun initialize(n: Node?) {
 
         val rank = n?.getID();
-        val level = rank?.toInt()?.let { getlevel(it) }
+        val level = rank?.toInt()?.let { getlevel(it) } as Int
 //        println(rank.toString() + " " + level.toString())
 
-        val kademliaProtocol2 = n?.getProtocol(dhtPid) as KademliaProtocol
-        val msg3 = FindValueOperation(pid, kademliaProtocol2.nodeId, "xyz")
-        EDSimulator.add(500, msg3, n, dhtPid)
+        val kademliaProtocol = n.getProtocol(dhtPid) as KademliaProtocol
+        val global = n.getProtocol(listid) as GlobalProt
+        global.setNode(n)
+        global.add(n.getID().toInt(), level)
+
+        val lst = level?.let { global.getList(it) } as MutableList
+        val msg = StoreValueOperation(pid, kademliaProtocol.nodeId, "level_$level", lst)
+        msg.type = MsgTypes.STORE_VAL
+        EDSimulator.add(50, msg, n, dhtPid)
    }
 
     companion object{
@@ -39,5 +49,6 @@ class InitNode(prefix: String) : NodeInitializer {
         var base = 4
         private const val PAR_PROT = "protocol"
         private const val PAR_DHT = "dht"
+        private const val PAR_LIST = "globallist"
     }
 }

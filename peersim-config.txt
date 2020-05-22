@@ -23,9 +23,14 @@ protocol.dht KademliaProtocol
 {
     transport tr
 }
+protocol.glist GlobalProt
+{
+    dht dht
+}
 protocol.flashcrowd FlashcrowdProtocol
 {
     dht dht
+    globallist glist
 }
 
 ##### Initialization #####
@@ -41,6 +46,7 @@ init.nw InitNetwork
 {
     protocol flashcrowd
     dht dht
+    globallist glist
 }
 
 ##### Control #####
@@ -72,6 +78,7 @@ control.churn Turbulence
     {
         protocol flashcrowd
         dht dht
+        globallist glist
     }
 }
 
