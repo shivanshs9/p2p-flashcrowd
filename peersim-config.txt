@@ -57,11 +57,21 @@ control.churn Turbulence
 {
     protocol dht
     transport tr
+    minsize 500
     maxsize 2000
+    p_rem 0
+    p_add 1
+
     step SECOND
-    init.0 InitNode
+
+    init.0 CustomDist
     {
-        protocol dht
+        dht dht
+    }
+    init.1 InitNode
+    {
+        protocol flashcrowd
+        dht dht
     }
 }
 
