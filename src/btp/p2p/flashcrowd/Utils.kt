@@ -11,13 +11,13 @@ class MsgTypes{
 
         const val FIND_VAL = 1
         const val STORE_VAL = 2
-        const val FIND_VAL_STERILE = 1
-        const val STORE_VAL_STERILE = 2
+        const val FIND_VAL_STERILE = 3
+        const val STORE_VAL_STERILE = 4
         const val CONN_REQ = 5
         const val CONN_SUCCESS = 6
         const val CONN_FAILURE = 7
         const val CONN_REQ_STERILE = 8
-        const val CONN_SUCCESS_STERILE = 6
+        const val CONN_SUCCESS_STERILE = 9
     }
 }
 

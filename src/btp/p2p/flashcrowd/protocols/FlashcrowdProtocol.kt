@@ -104,8 +104,14 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 
                         val destId = global.getNode(it as Int).getProtocol(dhtPid) as KademliaProtocol
                         val msg =
-                            ConnectionRequest(sourceId.nodeId, destId.nodeId, node.getID().toInt(), MsgTypes.CONN_REQ_STERILE)
+                            ConnectionRequest(
+                                sourceId.nodeId,
+                                destId.nodeId,
+                                node.getID().toInt(),
+                                MsgTypes.CONN_REQ_STERILE
+                            )
                         sourceId.sendMessage(msg, myId)
+
                     }
 
                     if (!global.hasJoinedSterile(node.getID().toInt())) {
@@ -113,10 +119,18 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                         val glist = global.getgloballist() as MutableList<*>
                         glist.forEach {
 
-                            val destId = global.getNode(it as Int).getProtocol(dhtPid) as KademliaProtocol
-                            val msg =
-                                ConnectionRequest(sourceId.nodeId, destId.nodeId, node.getID().toInt(), MsgTypes.CONN_REQ_STERILE)
-                            sourceId.sendMessage(msg, myId)
+                            if(getlevel(node.getID().toInt()) > getlevel(it as Int))
+                            {
+                                val destId = global.getNode(it as Int).getProtocol(dhtPid) as KademliaProtocol
+                                val msg =
+                                    ConnectionRequest(
+                                        sourceId.nodeId,
+                                        destId.nodeId,
+                                        node.getID().toInt(),
+                                        MsgTypes.CONN_REQ_STERILE
+                                    )
+                                sourceId.sendMessage(msg, myId)
+                            }
                         }
                     }
                 }
