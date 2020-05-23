@@ -36,13 +36,11 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
     override fun processEvent(node: Node, pid: Int, event: Any?) {
         if (myId == 0) myId = pid
         val global = node.getProtocol(listid) as GlobalProt
-//        val rank = node?.getID();
 
-        // Let the DHT Protocol do its stuff
-//        (node.getProtocol(dhtPid) as KademliaProtocol).processEvent(node, dhtPid, event)
         when(event){
 
-            is ResultStoreValueOperation ->{    // if node has updated its corresponding nodelist then it begins sending connection requests
+            // if node has updated its corresponding nodelist then it begins sending connection requests
+            is ResultStoreValueOperation ->{
 
                 val level = getlevel(node.getID().toInt())
                 val kademliaId = node.getProtocol(dhtPid) as KademliaProtocol
@@ -62,7 +60,8 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 
             }
 
-            is ResultFindNodeOperation ->{  // if node doesn't receive parent list, retry after global timeout
+            // if node doesn't receive parent list, retry after global timeout
+            is ResultFindNodeOperation ->{
 
                 val level = getlevel(node.getID().toInt())
                 val kademliaId = node.getProtocol(dhtPid) as KademliaProtocol

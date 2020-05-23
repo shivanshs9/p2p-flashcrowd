@@ -14,19 +14,6 @@ class InitNetwork(val prefix: String) : Control {
 
     override fun execute(): Boolean {
 
-//        (0 until Network.size()).forEach {
-//            val dhtProtocol = Network.get(it).getProtocol(dhtPid) as DHTProtocol
-//            EDSimulator.add(5 * 1000, StoreMessage<String>(dhtProtocol.address, "data $it"), Network.get(it), pid)
-//        }
-        val node = Network.get(0)
-        val a = listOf('1', '2', '3')
-        val kademliaProtocol = node.getProtocol(dhtPid) as KademliaProtocol
-        val msg1 = FindValueOperation(pid, kademliaProtocol.nodeId, "xyz")
-        //println(msg1)
-        val msg2 = StoreValueOperation(pid, kademliaProtocol.nodeId, "xyz", a)
-//        EDSimulator.add(1000, msg1, node, dhtPid)
-//        EDSimulator.add(3000, msg2, node, dhtPid)
-        //EDSimulator.add(10000, msg3, node2, dhtPid)
         return false
     }
 

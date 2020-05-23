@@ -32,7 +32,6 @@ class InitNode(prefix: String) : NodeInitializer {
 
         val rank = n?.getID();
         val level = rank?.toInt()?.let { getlevel(it) } as Int
-//        println(rank.toString() + " " + level.toString())
 
         val kademliaProtocol = n.getProtocol(dhtPid) as KademliaProtocol
         val global = n.getProtocol(listid) as GlobalProt
