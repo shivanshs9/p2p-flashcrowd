@@ -6,7 +6,7 @@ random.seed 1234567890
 simulation.experiments 1
 simulation.endtime 60 * SECOND
 simulation.logtime 5 * SECOND
-network.size 100
+network.size 1
 
 ##### Protocols #####
 protocol.urt UniformRandomTransport
@@ -23,9 +23,14 @@ protocol.dht KademliaProtocol
 {
     transport tr
 }
+protocol.glist GlobalProt
+{
+    dht dht
+}
 protocol.flashcrowd FlashcrowdProtocol
 {
     dht dht
+    globallist glist
 }
 
 ##### Initialization #####
@@ -41,6 +46,7 @@ init.nw InitNetwork
 {
     protocol flashcrowd
     dht dht
+    globallist glist
 }
 
 ##### Control #####
@@ -53,17 +59,28 @@ control.generator TrafficGenerator
 }
 
 ##### Network Churn #####
-#control.churn Turbulence
-#{
-#    protocol dht
-#    transport tr
-#    maxsize 2000
-#    step SECOND
-#    init.0 InitNode
-#    {
-#        protocol ovr
-#    }
-#}
+control.churn Turbulence
+{
+    protocol dht
+    transport tr
+    minsize 500
+    maxsize 2000
+    p_rem 0
+    p_add 1
+
+    step SECOND
+
+    init.0 CustomDist
+    {
+        dht dht
+    }
+    init.1 InitNode
+    {
+        protocol flashcrowd
+        dht dht
+        globallist glist
+    }
+}
 
 ##### Livestream P2P #####
 btp.stream.substreams 7
