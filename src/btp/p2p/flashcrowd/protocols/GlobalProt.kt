@@ -29,6 +29,22 @@ class GlobalProt(val prefix: String) : EDProtocol {
         }
     }
 
+    fun addSterile(node: Int, level: Int){
+
+        val tmp = sterileNodeMap[level]
+        tmp?.add(node)
+        if (tmp != null) {
+            sterileNodeMap[level] = tmp
+        }
+        else{
+            sterileNodeMap[level] = mutableListOf(node)
+        }
+    }
+
+    fun getSterileList(level: Int): MutableList<Int>? {
+        return sterileNodeMap[level]
+    }
+
     fun remove(node: Int, level: Int){
 
         val tmp = nodeMap[level]
@@ -61,12 +77,34 @@ class GlobalProt(val prefix: String) : EDProtocol {
         return false
     }
 
+    fun getgloballist():MutableList<Int>{
+
+        return globalfeed
+    }
+
+    fun globaladd(node: Int){
+
+        globalfeed.add(node)
+    }
+
+    fun setSterileJoin(node: Int){
+
+        joinedSterileMap[node] = true
+    }
+
+    fun hasJoinedSterile(node: Int):Boolean{
+
+        if(joinedSterileMap[node] == true) return true
+        return false
+    }
+
     companion object {
         private const val PAR_DHT = "dht"
         val nodeMap: MutableMap<Int, MutableList<Int>> = mutableMapOf<Int, MutableList<Int>>()
+        val sterileNodeMap: MutableMap<Int, MutableList<Int>> = mutableMapOf<Int, MutableList<Int>>()
         val networkMap: MutableMap<Int, Node> = mutableMapOf<Int, Node>()
         val joinedMap: MutableMap<Int, Boolean> = mutableMapOf<Int, Boolean>()
-
-
+        val globalfeed: MutableList<Int> = mutableListOf<Int>()
+        val joinedSterileMap: MutableMap<Int, Boolean> = mutableMapOf<Int, Boolean>()
     }
 }

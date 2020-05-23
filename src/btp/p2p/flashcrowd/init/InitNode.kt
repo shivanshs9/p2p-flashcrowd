@@ -1,5 +1,6 @@
 package btp.p2p.flashcrowd.init
 
+import btp.p2p.flashcrowd.Constants
 import btp.p2p.flashcrowd.MsgTypes
 import btp.p2p.flashcrowd.protocols.GlobalProt
 import peersim.config.Configuration
@@ -41,7 +42,15 @@ class InitNode(prefix: String) : NodeInitializer {
         val lst = level?.let { global.getList(it) } as MutableList
         val msg = StoreValueOperation(pid, kademliaProtocol.nodeId, "level_$level", lst)
         msg.type = MsgTypes.STORE_VAL
-        EDSimulator.add(50, msg, n, dhtPid)
+        EDSimulator.add(50, msg, n, dhtPid)// fertile join
+
+        global.addSterile(n.getID().toInt(), level)
+        val slst = level?.let { global.getSterileList(it) } as MutableList
+        val smsg = StoreValueOperation(pid, kademliaProtocol.nodeId, "s_level_$level", slst)
+        smsg.type = MsgTypes.STORE_VAL_STERILE
+        EDSimulator.add(Constants.SterileDelay, smsg, n, dhtPid)// sterile join
+
+        global.globaladd(n.getID().toInt())
    }
 
     companion object{
