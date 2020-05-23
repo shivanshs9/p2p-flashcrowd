@@ -98,6 +98,11 @@ class GlobalProt(val prefix: String) : EDProtocol {
         return false
     }
 
+    fun disconnectSterile(node: Int){
+
+        joinedSterileMap[node] = false
+    }
+
     companion object {
         private const val PAR_DHT = "dht"
         val nodeMap: MutableMap<Int, MutableList<Int>> = mutableMapOf<Int, MutableList<Int>>()
