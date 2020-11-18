@@ -59,12 +59,12 @@ control.generator TrafficGenerator
 }
 
 ##### Network Churn #####
-control.churn Turbulence
+control.flashcrowd Turbulence
 {
     protocol dht
     transport tr
-    minsize 500
     maxsize 2000
+    max_change 30
     p_rem 0
     p_add 1
 
@@ -80,6 +80,19 @@ control.churn Turbulence
         dht dht
         globallist glist
     }
+}
+
+control.churn Turbulence
+{
+    protocol dht
+    transport tr
+    minsize 100
+    delay_start 10 * SECOND
+    max_change 10
+    p_rem 1
+    p_add 0
+
+    step SECOND
 }
 
 ##### Livestream P2P #####
