@@ -23,7 +23,7 @@ class FlashcrowdController(private val prefix: String) : Control {
         val kademliaProt = Network.get(0).getProtocol(dhtPid) as KademliaProtocol
         val flashcrowdSize = Network.size()
         val numLevel =
-            ceil(log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / log10(Simulator.bandwidthK1.toDouble()))
+            ceil(log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / (log10(Simulator.bandwidthK1.toDouble())+0.001))
         val storeMsg =
             StoreValueOperation(flashcrowdPid, kademliaProt.nodeId, Constants.KEY_NUM_LEVELS, numLevel.toInt()).apply {
                 type = MsgTypes.STORE_NUM_LEVELS
