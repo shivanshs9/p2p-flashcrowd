@@ -48,6 +48,14 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
         kademliaProt.sendMessage(findMsg)
     }
 
+    private fun fetchGlobalFeedList(kademliaProt: KademliaProtocol, streamId: Int) {
+        val key = Constants.KEY_GLOBAL_LIST.format(streamId)
+        val findMsg = FindValueOperation(myId, kademliaProt.nodeId, key).apply {
+            type = MsgTypes.FIND_ANCESTORS
+        }
+        kademliaProt.sendMessage(findMsg)
+    }
+
     private fun connectToAncestors(
         kademliaProt: KademliaProtocol,
         streamId: Int,
@@ -58,6 +66,8 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             if (stream.isFertile) fetchAncestorsList(kademliaProt, streamId, stream.level)
             else {
                 // try global feedback list if node still hasnt connected
+                fetchGlobalFeedList(kademliaProt, streamId)
+
 //                if (!GlobalProt.hasJoinedSterile(node.id.toInt())) {
 //
 //                    val glist = GlobalProt.getgloballist() as MutableList<*>
