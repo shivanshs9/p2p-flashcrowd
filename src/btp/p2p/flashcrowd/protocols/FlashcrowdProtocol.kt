@@ -6,14 +6,21 @@ import btp.p2p.flashcrowd.Simulator
 import btp.p2p.flashcrowd.messages.*
 import btp.p2p.flashcrowd.stream.Substream
 import peersim.config.Configuration
+import peersim.core.Network
 import peersim.core.Node
 import peersim.edsim.EDProtocol
 import peersim.edsim.EDSimulator
 import peersim.kademlia.KademliaProtocol
 import peersim.kademlia.events.RPCResultPrimitive
-import peersim.kademlia.rpc.*
+import peersim.kademlia.rpc.FindValueOperation
+import peersim.kademlia.rpc.ResultFindNodeOperation
+import peersim.kademlia.rpc.ResultFindValueOperation
+import peersim.kademlia.rpc.ResultStoreValueOperation
+import kotlin.math.ceil
+import kotlin.math.log10
 import kotlin.math.pow
 
+@ExperimentalStdlibApi
 class FlashcrowdProtocol(val prefix: String) : EDProtocol {
     private var myId: Int = 0
     private val listOpPid: Int = Configuration.getPid("$prefix.$PAR_LIST_OP")
@@ -21,20 +28,33 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 
     // each substream is assumed sterile by default
     val substreams: List<Substream> = (0 until Simulator.noOfSubStreamTrees).map { Substream(it, false) }
-    private var cachedNumLevels: Int = 1
+    private val cachedNumLevels: Int
+        get() {
+            val flashcrowdSize = Network.size()
+            return ceil(
+                log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / (log10(
+                    Simulator.bandwidthK1.toDouble()
+                ) + 0.001)
+            ).toInt() + 1
+        }
     private val tmpStreamToAncestors: MutableMap<Int, MutableList<StreamNodeData>> = mutableMapOf()
 
     override fun clone(): Any = FlashcrowdProtocol(prefix)
 
     private fun getFertileTreePlacement(rank: Int): Pair<Int, Int> {
-        val nodesPerLevel = listOf(0.0) + (1..cachedNumLevels)
-            .map { Simulator.systemCapacity * Simulator.bandwidthK1.toDouble().pow(it - 1) }
+        val nodesPerLevel = listOf(0) + (1..cachedNumLevels)
+            .map { Simulator.bandwidthK1.toDouble().pow(it - 1).toInt() }
             .map { it * Simulator.noOfSubStreamTrees }
-        val totalNodes = listOf(0.0) + (1..cachedNumLevels).map { nodesPerLevel[it - 1] + nodesPerLevel[it] }
+        val totalNodes: List<Int> = buildList {
+            add(0)
+            (1..cachedNumLevels).forEach { add(get(it - 1) + nodesPerLevel[it]) }
+        }
         var level = 1
         while (true) {
             if (totalNodes[level - 1] < rank && rank <= totalNodes[level]) {
-                return level to ((rank - totalNodes[level - 1].toInt()) % Simulator.noOfSubStreamTrees)
+                return level to ((rank - totalNodes[level - 1]) % Simulator.noOfSubStreamTrees)
+            } else if (rank > totalNodes[cachedNumLevels]) {
+                throw IllegalStateException("Got rank of $rank but number of levels is capped at $cachedNumLevels (network size=${Network.size()})")
             }
             level++
         }
@@ -67,25 +87,6 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             else {
                 // try global feedback list if node still hasnt connected
                 fetchGlobalFeedList(kademliaProt, streamId)
-
-//                if (!GlobalProt.hasJoinedSterile(node.id.toInt())) {
-//
-//                    val glist = GlobalProt.getgloballist() as MutableList<*>
-//                    glist.forEach {
-//
-//                        if (getlevel(node.id.toInt()) > getlevel(it as Int)) {
-//                            val destId = GlobalProt.getNode(it).getProtocol(dhtPid) as KademliaProtocol
-//                            val msg =
-//                                ConnectionRequest(
-//                                    sourceId.nodeId,
-//                                    destId.nodeId,
-//                                    node.id.toInt(),
-//                                    MsgTypes.CONN_REQ_STERILE
-//                                )
-//                            sourceId.sendMessage(msg, myId)
-//                        }
-//                    }
-//                }
             }
             return
         }
@@ -142,10 +143,9 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             // if node has updated its corresponding nodelist then it begins sending connection requests
             is ResultStoreValueOperation -> {
                 when (event.type) {
-                    MsgTypes.STORE_NUM_LEVELS -> {
-                        cachedNumLevels = (event.requestOp as StoreValueOperation).data?.second as Int
-                        println("Updating num_level to $cachedNumLevels")
-                    }
+//                    MsgTypes.STORE_NUM_LEVELS -> {
+//                        cachedNumLevels = (event.requestOp as StoreValueOperation).data?.second as Int
+//                    }
                     ListAppendOperation.TYPE_APPEND -> {
                         println("registered in feed forward")
                     }

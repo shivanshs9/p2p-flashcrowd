@@ -6,7 +6,6 @@ import btp.p2p.flashcrowd.Simulator
 import peersim.config.Configuration
 import peersim.core.Control
 import peersim.core.Network
-import peersim.edsim.EDSimulator
 import peersim.kademlia.KademliaProtocol
 import peersim.kademlia.rpc.StoreValueOperation
 import kotlin.math.ceil
@@ -23,12 +22,14 @@ class FlashcrowdController(private val prefix: String) : Control {
         val kademliaProt = Network.get(0).getProtocol(dhtPid) as KademliaProtocol
         val flashcrowdSize = Network.size()
         val numLevel =
-            ceil(log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / (log10(Simulator.bandwidthK1.toDouble())+0.001))
+            ceil(log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / (log10(Simulator.bandwidthK1.toDouble()) + 0.001))
+//        println("Updating num_level to $numLevel at flashcrowd size - $flashcrowdSize")
         val storeMsg =
             StoreValueOperation(flashcrowdPid, kademliaProt.nodeId, Constants.KEY_NUM_LEVELS, numLevel.toInt()).apply {
                 type = MsgTypes.STORE_NUM_LEVELS
             }
-        EDSimulator.add(0, storeMsg, Network.get(0), dhtPid)
+        // removed because it's updating late
+//        EDSimulator.add(0, storeMsg, Network.get(0), dhtPid)
         return false
     }
 
