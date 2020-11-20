@@ -74,6 +74,12 @@ control.flashcrowd Turbulence
         dht dht
     }
 }
+control.handler FlashcrowdController
+{
+    step SECOND
+    dht dht
+    protocol flashcrowd
+}
 
 control.churn Turbulence
 {
@@ -90,5 +96,6 @@ control.churn Turbulence
 
 ##### Livestream P2P #####
 btp.stream.substreams 7
-btp.system.init_capacity 10
-btp.peer.capacity 6
+btp.system.capacity 10
+btp.peer.capacity.outgoing 4
+btp.peer.capacity.total 6
