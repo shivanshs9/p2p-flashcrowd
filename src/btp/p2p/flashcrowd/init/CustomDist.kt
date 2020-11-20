@@ -2,7 +2,6 @@ package btp.p2p.flashcrowd.init
 
 import peersim.config.Configuration
 import peersim.core.CommonState
-import peersim.core.Network
 import peersim.core.Node
 import peersim.dynamics.NodeInitializer
 import peersim.kademlia.KademliaCommonConfig
@@ -15,7 +14,6 @@ class CustomDist(prefix: String) : NodeInitializer {
     private val urg: UniformRandomGenerator
 
     override fun initialize(n: Node?) {
-
         val tmp = urg.generate()
         (n?.getProtocol(protocolID) as KademliaProtocol).setNode(tmp, n)
     }

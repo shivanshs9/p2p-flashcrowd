@@ -12,10 +12,7 @@ import peersim.edsim.EDProtocol
 import peersim.edsim.EDSimulator
 import peersim.kademlia.KademliaProtocol
 import peersim.kademlia.events.RPCResultPrimitive
-import peersim.kademlia.rpc.FindValueOperation
-import peersim.kademlia.rpc.ResultFindNodeOperation
-import peersim.kademlia.rpc.ResultFindValueOperation
-import peersim.kademlia.rpc.ResultStoreValueOperation
+import peersim.kademlia.rpc.*
 import kotlin.math.ceil
 import kotlin.math.log10
 import kotlin.math.pow
@@ -23,11 +20,11 @@ import kotlin.math.pow
 @ExperimentalStdlibApi
 class FlashcrowdProtocol(val prefix: String) : EDProtocol {
     private var myId: Int = 0
-    private val listOpPid: Int = Configuration.getPid("$prefix.$PAR_LIST_OP")
     private val dhtPid: Int = Configuration.getPid("$prefix.$PAR_DHT")
 
     // each substream is assumed sterile by default
     val substreams: List<Substream> = (0 until Simulator.noOfSubStreamTrees).map { Substream(it, false) }
+    private val fertileStream: Substream by lazy { substreams.first { it.isFertile } }
     private val cachedNumLevels: Int
         get() {
             val flashcrowdSize = Network.size()
@@ -76,13 +73,21 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
         kademliaProt.sendMessage(findMsg)
     }
 
+    fun retryFetchPeerList(kademliaProt: KademliaProtocol, requestOp: FindValueOperation) {
+        val key = requestOp.data!!
+        val findMsg = FindValueOperation(myId, kademliaProt.nodeId, key).apply {
+            type = MsgTypes.FIND_ANCESTORS
+        }
+        kademliaProt.sendMessage(findMsg, forceDelay = Constants.fetchTimeout)
+    }
+
     private fun connectToAncestors(
         kademliaProt: KademliaProtocol,
         streamId: Int,
         ancestorsList: MutableList<StreamNodeData>
     ) {
+        val stream = substreams[streamId]
         if (ancestorsList.isEmpty()) {
-            val stream = substreams[streamId]
             if (stream.isFertile) fetchAncestorsList(kademliaProt, streamId, stream.level)
             else {
                 // try global feedback list if node still hasnt connected
@@ -95,9 +100,10 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             ConnectionRequest(
                 kademliaProt.nodeId,
                 ancestorsList[parentIdx].nodeId,
-                StreamNodeData(streamId, kademliaProt.nodeId)
+                StreamNodeData(streamId, kademliaProt.nodeId),
+                stream.isFertile
             )
-        kademliaProt.sendMessage(connectMsg)
+        kademliaProt.sendMessage(connectMsg, protocolPid = myId)
         ancestorsList.removeAt(parentIdx)
     }
 
@@ -122,7 +128,7 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     if (stream.isFertile) {
                         val data = StreamNodeData(stream.streamId, kademliaProt.nodeId)
                         val storeMsg = ListAppendOperation(myId, kademliaProt.nodeId, data.getLevelKey(level), data)
-                        kademliaProt.sendMessage(storeMsg, protocolPid = listOpPid, forceDelay = 0)
+                        kademliaProt.sendMessage(storeMsg, forceDelay = 0)
                     } else {
                         EDSimulator.add(
                             Constants.SterileDelay,
@@ -138,7 +144,13 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             is SterileJoin -> {
                 val data = StreamNodeData(event.data!!.first, kademliaProt.nodeId)
                 val storeMsg = ListAppendOperation(myId, kademliaProt.nodeId, data.getLevelKey(event.data.second), data)
-                kademliaProt.sendMessage(storeMsg, protocolPid = listOpPid, forceDelay = 0)
+                kademliaProt.sendMessage(storeMsg, forceDelay = 0)
+            }
+            is GlobalFeedForwardJoin -> {
+                val data = StreamNodeData(event.data!!, kademliaProt.nodeId)
+                println("registering in global feed-forward list: $data")
+                val storeMsg = ListAppendOperation(myId, kademliaProt.nodeId, data.globalKey, data)
+                kademliaProt.sendMessage(storeMsg, forceDelay = 0)
             }
             // if node has updated its corresponding nodelist then it begins sending connection requests
             is ResultStoreValueOperation -> {
@@ -147,7 +159,14 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 //                        cachedNumLevels = (event.requestOp as StoreValueOperation).data?.second as Int
 //                    }
                     ListAppendOperation.TYPE_APPEND -> {
-                        println("registered in feed forward")
+                        println("registered in feed forward @ ${event.data}")
+                        // add to global feed forward list after delay
+                        EDSimulator.add(
+                            Constants.globalTimeout,
+                            GlobalFeedForwardJoin(pid, kademliaProt.nodeId, fertileStream.streamId),
+                            node,
+                            myId
+                        )
                     }
                 }
             }
@@ -155,11 +174,8 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                 when (event.type) {
                     MsgTypes.FIND_ANCESTORS -> {
                         // if node doesn't receive parent list, retry after global timeout
-                        val key = (event.requestOp as FindValueOperation).data!!
-                        val findMsg = FindValueOperation(myId, kademliaProt.nodeId, key).apply {
-                            type = MsgTypes.FIND_ANCESTORS
-                        }
-                        kademliaProt.sendMessage(findMsg, forceDelay = Constants.globalTimeout)
+                        println("unable to find peers @ ${event.requestOp.data}")
+                        retryFetchPeerList(kademliaProt, event.requestOp as FindValueOperation)
                     }
                 }
             }
@@ -168,6 +184,11 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     MsgTypes.FIND_ANCESTORS -> {
                         // node has received parent list
                         val potentialParents = event.data as? MutableList<StreamNodeData> ?: return
+                        if (potentialParents.isEmpty()) {
+                            retryFetchPeerList(kademliaProt, event.requestOp as FindValueOperation)
+                            return
+                        }
+                        println("found peers @ ${event.requestOp.data}: $potentialParents")
                         val streamId = potentialParents.first().streamId
                         tmpStreamToAncestors[streamId] = potentialParents
                         connectToAncestors(kademliaProt, streamId, potentialParents)
@@ -183,7 +204,7 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                         if (stream.children.size < Simulator.bandwidthK1) {
                             stream.children.add(event.data)
                             val result = ConnectionResult(event, stream.streamId)
-                            kademliaProt.sendMessage(result)
+                            kademliaProt.sendMessage(result, protocolPid = myId)
                         } else {
                             val sterileChildren = stream.children.map { it.nodeId }.map {
                                 it to (KademliaProtocol.getNode(it)?.getProtocol(myId) as FlashcrowdProtocol)
@@ -194,16 +215,16 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                                 // case 2: has k children, one of them sterile
                                 if (stream.children.removeIf { it.nodeId == nodeId }) {
                                     val disconnectMsg = DisconnectionRequest(kademliaProt.nodeId, nodeId, event.data)
-                                    kademliaProt.sendMessage(disconnectMsg)
+                                    kademliaProt.sendMessage(disconnectMsg, protocolPid = myId)
 
                                     stream.children.add(event.data)
                                     val result = ConnectionResult(event, stream.streamId)
-                                    kademliaProt.sendMessage(result)
+                                    kademliaProt.sendMessage(result, protocolPid = myId)
                                 }
                             } ?: kotlin.run {
                                 // case 3: has k children, none is sterile
                                 val result = ConnectionResult(event, stream.streamId, RPCResultPrimitive.STATUS_FAIL)
-                                kademliaProt.sendMessage(result)
+                                kademliaProt.sendMessage(result, protocolPid = myId)
                             }
                         }
                     }
@@ -211,10 +232,10 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                         if (stream.children.size < Simulator.bandwidthK1) {
                             stream.children.add(event.data)
                             val result = ConnectionResult(event, stream.streamId)
-                            kademliaProt.sendMessage(result)
+                            kademliaProt.sendMessage(result, protocolPid = myId)
                         } else {
                             val result = ConnectionResult(event, stream.streamId, RPCResultPrimitive.STATUS_FAIL)
-                            kademliaProt.sendMessage(result)
+                            kademliaProt.sendMessage(result, protocolPid = myId)
                         }
                     }
                 }
@@ -222,10 +243,11 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             is ConnectionResult -> {
                 when (event.status) {
                     RPCResultPrimitive.STATUS_SUCCESS -> {
-                        println("Node ${node.id} successfully connected to stream: ${event.data}")
+                        println("CONNECT: Node ${node.id} successfully connected to stream: ${event.data}")
 
                     }
                     RPCResultPrimitive.STATUS_FAIL -> {
+                        println("CONNECT: Node ${node.id} failed to connect to stream: ${event.data}")
                         val potentialParents = tmpStreamToAncestors[event.data]!!
                         connectToAncestors(kademliaProt, event.data!!, potentialParents)
                     }
@@ -236,6 +258,5 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 
     companion object {
         private const val PAR_DHT = "dht"
-        private const val PAR_LIST_OP = "list"
     }
 }

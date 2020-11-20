@@ -28,7 +28,8 @@ object Constants {
     const val KEY_GLOBAL_LIST = "global__stream.%d"
     const val KEY_NUM_LEVELS = "num_of_levels"
 
-    const val globalTimeout: Long = 3000
+    const val fetchTimeout: Long = 2000
+    const val globalTimeout: Long = 4000
     const val globalDelay: Long = 500
     const val SterileDelay: Long = 7500
 }
