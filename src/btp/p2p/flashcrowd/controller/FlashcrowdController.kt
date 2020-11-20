@@ -25,7 +25,7 @@ class FlashcrowdController(private val prefix: String) : Control {
         val numLevel =
             ceil(log10(flashcrowdSize * (Simulator.bandwidthK1 - 1.0) / Simulator.systemCapacity) / log10(Simulator.bandwidthK1.toDouble()))
         val storeMsg =
-            StoreValueOperation(flashcrowdPid, kademliaProt.nodeId, Constants.KEY_NUM_LEVELS, numLevel).apply {
+            StoreValueOperation(flashcrowdPid, kademliaProt.nodeId, Constants.KEY_NUM_LEVELS, numLevel.toInt()).apply {
                 type = MsgTypes.STORE_NUM_LEVELS
             }
         EDSimulator.add(0, storeMsg, Network.get(0), dhtPid)

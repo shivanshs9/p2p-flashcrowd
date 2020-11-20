@@ -23,9 +23,14 @@ protocol.dht KademliaProtocol
 {
     transport tr
 }
+protocol.list ListOperationProtocol
+{
+    dht dht
+}
 protocol.flashcrowd FlashcrowdProtocol
 {
     dht dht
+    list list
 }
 
 ##### Initialization #####

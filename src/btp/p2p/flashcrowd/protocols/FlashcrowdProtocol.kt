@@ -10,29 +10,31 @@ import peersim.core.Node
 import peersim.edsim.EDProtocol
 import peersim.edsim.EDSimulator
 import peersim.kademlia.KademliaProtocol
+import peersim.kademlia.events.RPCResultPrimitive
 import peersim.kademlia.rpc.*
 import kotlin.math.pow
 
 class FlashcrowdProtocol(val prefix: String) : EDProtocol {
     private var myId: Int = 0
+    private val listOpPid: Int = Configuration.getPid("$prefix.$PAR_LIST_OP")
     private val dhtPid: Int = Configuration.getPid("$prefix.$PAR_DHT")
 
     // each substream is assumed sterile by default
-    private val substreams: List<Substream> = (0 until Simulator.noOfSubStreamTrees).map { Substream(it, false) }
+    val substreams: List<Substream> = (0 until Simulator.noOfSubStreamTrees).map { Substream(it, false) }
     private var cachedNumLevels: Int = 1
     private val tmpStreamToAncestors: MutableMap<Int, MutableList<StreamNodeData>> = mutableMapOf()
 
     override fun clone(): Any = FlashcrowdProtocol(prefix)
 
     private fun getFertileTreePlacement(rank: Int): Pair<Int, Int> {
-        val nodesPerLevel = listOf(0) + (1..cachedNumLevels)
+        val nodesPerLevel = listOf(0.0) + (1..cachedNumLevels)
             .map { Simulator.systemCapacity * Simulator.bandwidthK1.toDouble().pow(it - 1) }
             .map { it * Simulator.noOfSubStreamTrees }
-        val totalNodes = listOf(0) + (1..cachedNumLevels).map { nodesPerLevel[it - 1] + nodesPerLevel[it] }
+        val totalNodes = listOf(0.0) + (1..cachedNumLevels).map { nodesPerLevel[it - 1] + nodesPerLevel[it] }
         var level = 1
         while (true) {
             if (totalNodes[level - 1] < rank && rank <= totalNodes[level]) {
-                return level to ((rank - totalNodes[level - 1]) % Simulator.noOfSubStreamTrees)
+                return level to ((rank - totalNodes[level - 1].toInt()) % Simulator.noOfSubStreamTrees)
             }
             level++
         }
@@ -56,29 +58,34 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             if (stream.isFertile) fetchAncestorsList(kademliaProt, streamId, stream.level)
             else {
                 // try global feedback list if node still hasnt connected
-                if (!GlobalProt.hasJoinedSterile(node.id.toInt())) {
-
-                    val glist = GlobalProt.getgloballist() as MutableList<*>
-                    glist.forEach {
-
-                        if (getlevel(node.id.toInt()) > getlevel(it as Int)) {
-                            val destId = GlobalProt.getNode(it).getProtocol(dhtPid) as KademliaProtocol
-                            val msg =
-                                ConnectionRequest(
-                                    sourceId.nodeId,
-                                    destId.nodeId,
-                                    node.id.toInt(),
-                                    MsgTypes.CONN_REQ_STERILE
-                                )
-                            sourceId.sendMessage(msg, myId)
-                        }
-                    }
-                }
+//                if (!GlobalProt.hasJoinedSterile(node.id.toInt())) {
+//
+//                    val glist = GlobalProt.getgloballist() as MutableList<*>
+//                    glist.forEach {
+//
+//                        if (getlevel(node.id.toInt()) > getlevel(it as Int)) {
+//                            val destId = GlobalProt.getNode(it).getProtocol(dhtPid) as KademliaProtocol
+//                            val msg =
+//                                ConnectionRequest(
+//                                    sourceId.nodeId,
+//                                    destId.nodeId,
+//                                    node.id.toInt(),
+//                                    MsgTypes.CONN_REQ_STERILE
+//                                )
+//                            sourceId.sendMessage(msg, myId)
+//                        }
+//                    }
+//                }
             }
+            return
         }
         val parentIdx = ancestorsList.indices.random()
         val connectMsg =
-            ConnectionRequest(kademliaProt.nodeId, ancestorsList[parentIdx].nodeId, ancestorsList[parentIdx])
+            ConnectionRequest(
+                kademliaProt.nodeId,
+                ancestorsList[parentIdx].nodeId,
+                StreamNodeData(streamId, kademliaProt.nodeId)
+            )
         kademliaProt.sendMessage(connectMsg)
         ancestorsList.removeAt(parentIdx)
     }
@@ -104,7 +111,7 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     if (stream.isFertile) {
                         val data = StreamNodeData(stream.streamId, kademliaProt.nodeId)
                         val storeMsg = ListAppendOperation(myId, kademliaProt.nodeId, data.getLevelKey(level), data)
-                        kademliaProt.sendMessage(storeMsg)
+                        kademliaProt.sendMessage(storeMsg, protocolPid = listOpPid, forceDelay = 0)
                     } else {
                         EDSimulator.add(
                             Constants.SterileDelay,
@@ -120,13 +127,14 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             is SterileJoin -> {
                 val data = StreamNodeData(event.data!!.first, kademliaProt.nodeId)
                 val storeMsg = ListAppendOperation(myId, kademliaProt.nodeId, data.getLevelKey(event.data.second), data)
-                kademliaProt.sendMessage(storeMsg)
+                kademliaProt.sendMessage(storeMsg, protocolPid = listOpPid, forceDelay = 0)
             }
             // if node has updated its corresponding nodelist then it begins sending connection requests
             is ResultStoreValueOperation -> {
                 when (event.type) {
                     MsgTypes.STORE_NUM_LEVELS -> {
                         cachedNumLevels = (event.requestOp as StoreValueOperation).data?.second as Int
+                        println("Updating num_level to $cachedNumLevels")
                     }
                     ListAppendOperation.TYPE_APPEND -> {
                         println("registered in feed forward")
@@ -163,186 +171,61 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     MsgTypes.CONN_FERTILE_TREE -> {
                         // case 1: successful connect
                         if (stream.children.size < Simulator.bandwidthK1) {
-                            val result = ConnectionResult(event)
+                            stream.children.add(event.data)
+                            val result = ConnectionResult(event, stream.streamId)
                             kademliaProt.sendMessage(result)
-                        } else if (stream.children.size == Simulator.bandwidthK1)
+                        } else {
+                            val sterileChildren = stream.children.map { it.nodeId }.map {
+                                it to (KademliaProtocol.getNode(it)?.getProtocol(myId) as FlashcrowdProtocol)
+                            }.filter { (_, childProtocol) ->
+                                !childProtocol.substreams[stream.streamId].isFertile
+                            }
+                            sterileChildren.firstOrNull()?.also { (nodeId, _) ->
+                                // case 2: has k children, one of them sterile
+                                if (stream.children.removeIf { it.nodeId == nodeId }) {
+                                    val disconnectMsg = DisconnectionRequest(kademliaProt.nodeId, nodeId, event.data)
+                                    kademliaProt.sendMessage(disconnectMsg)
+
+                                    stream.children.add(event.data)
+                                    val result = ConnectionResult(event, stream.streamId)
+                                    kademliaProt.sendMessage(result)
+                                }
+                            } ?: kotlin.run {
+                                // case 3: has k children, none is sterile
+                                val result = ConnectionResult(event, stream.streamId, RPCResultPrimitive.STATUS_FAIL)
+                                kademliaProt.sendMessage(result)
+                            }
+                        }
                     }
                     MsgTypes.CONN_STERILE_TREE -> {
-
-                    }
-                }
-                // fertile connection request
-                if (event.type == MsgTypes.CONN_REQ) {
-                    //println("Node:${node.getID()} received connection request from Node:${event.data}")
-                    val currpar = GlobalProt.getList(getlevel(node.id.toInt()))
-                    val sourceId = node.getProtocol(dhtPid) as KademliaProtocol
-                    val destId = GlobalProt.getNode(event.data as Int).getProtocol(dhtPid) as KademliaProtocol
-
-                    if (childNodes.size + childNodesSterile.size < Constants.K) {
-
-                        // check if parent is still in stream list, check if node has joined via some other request
-                        if (!(currpar?.contains(node.id.toInt())!!) || GlobalProt.hasJoined(event.data)) {
-
-                            val msg = ConnectionRequest(
-                                sourceId.nodeId,
-                                destId.nodeId,
-                                node.id.toInt(),
-                                MsgTypes.CONN_FAILURE
-                            )
-                            sourceId.sendMessage(msg, myId)
-                            return
-                        }
-                        childNodes.add(event.data)
-                        GlobalProt.setJoin(event.data)
-
-                        // remove parent from stream list if it reaches maximum out-degree
-                        if (childNodes.size == Constants.K) {
-                            GlobalProt.remove(node.id.toInt(), getlevel(node.id.toInt()))
-                            val lst = GlobalProt.getList(getlevel(node.id.toInt())) as MutableList
-                            // update stream list in DHT
-                            val msg = StoreValueOperation(
-                                pid,
-                                sourceId.nodeId,
-                                "level_${getlevel(node.id.toInt())}",
-                                lst
-                            )
-                            msg.type = MsgTypes.STORE_VAL
-                            EDSimulator.add(50, msg, node, dhtPid)
-                        }
-
-                        // successful connection message
-                        val msg = ConnectionRequest(
-                            sourceId.nodeId,
-                            destId.nodeId,
-                            node.id.toInt(),
-                            MsgTypes.CONN_SUCCESS
-                        )
-                        sourceId.sendMessage(msg, myId)
-                    }
-
-                    // case 2:
-                    else if (childNodes.size + childNodesSterile.size == Constants.K) {
-
-                        // there is sterile child, then pop it from list and connect fertile child instead
-                        if (childNodesSterile.size > 0) {
-
-                            // invalidate this request if node has joined via some other request
-                            if (!(currpar?.contains(node.id.toInt())!!) || GlobalProt.hasJoined(event.data)) {
-
-                                val msg = ConnectionRequest(
-                                    sourceId.nodeId,
-                                    destId.nodeId,
-                                    node.id.toInt(),
-                                    MsgTypes.CONN_FAILURE
-                                )
-                                sourceId.sendMessage(msg, myId)
-                                return
-                            }
-
-                            // the sterile node disconnects and sends a fresh conn. request
-                            val disconn = childNodesSterile[0]
-                            childNodesSterile.remove(disconn)
-                            GlobalProt.disconnectSterile(disconn)
-
-                            val new_conn_msg = FindValueOperation(
-                                myId,
-                                (GlobalProt.getNode(disconn).getProtocol(dhtPid) as KademliaProtocol).nodeId,
-                                "s_level_${getlevel(disconn) - 1}"
-                            )
-                            new_conn_msg.type = MsgTypes.FIND_VAL_STERILE
-                            EDSimulator.add(
-                                Constants.globalTimeout,
-                                new_conn_msg,
-                                node,
-                                dhtPid
-                            )// sterile join for disconnected node
-
-                            // add child node to fertile list
-                            childNodes.add(event.data)
-                            GlobalProt.setJoin(event.data)
-                            val msg = ConnectionRequest(
-                                sourceId.nodeId,
-                                destId.nodeId,
-                                node.id.toInt(),
-                                MsgTypes.CONN_SUCCESS
-                            )
-                            sourceId.sendMessage(msg, myId)
-
-                            if (childNodes.size == Constants.K) {
-                                GlobalProt.remove(node.id.toInt(), getlevel(node.id.toInt()))
-                                val lst = GlobalProt.getList(getlevel(node.id.toInt())) as MutableList
-                                val msg = StoreValueOperation(
-                                    pid,
-                                    sourceId.nodeId,
-                                    "level_${getlevel(node.id.toInt())}",
-                                    lst
-                                )
-                                msg.type = MsgTypes.STORE_VAL
-                                EDSimulator.add(50, msg, node, dhtPid)
-                            }
+                        if (stream.children.size < Simulator.bandwidthK1) {
+                            stream.children.add(event.data)
+                            val result = ConnectionResult(event, stream.streamId)
+                            kademliaProt.sendMessage(result)
                         } else {
-
-                            val msg = ConnectionRequest(
-                                sourceId.nodeId,
-                                destId.nodeId,
-                                node.id.toInt(),
-                                MsgTypes.CONN_FAILURE
-                            )
-                            sourceId.sendMessage(msg, myId)
-                            return
+                            val result = ConnectionResult(event, stream.streamId, RPCResultPrimitive.STATUS_FAIL)
+                            kademliaProt.sendMessage(result)
                         }
                     }
                 }
             }
             is ConnectionResult -> {
+                when (event.status) {
+                    RPCResultPrimitive.STATUS_SUCCESS -> {
+                        println("Node ${node.id} successfully connected to stream: ${event.data}")
 
-                if (event.type == MsgTypes.CONN_SUCCESS) {
-
-                    println("Node ${node.id} successfully connected to Node: ${event.data} in its fertile tree")
-                }
-
-                if (event.type == MsgTypes.CONN_FAILURE) {
-
-                    //println("Node ${node.getID()} failed to connect to Node: ${event.data}")
-                }
-
-                if (event.type == MsgTypes.CONN_REQ_STERILE) {
-
-                    if (childNodes.size + childNodesSterile.size < Constants.K) {
-
-                        val sourceId = node.getProtocol(dhtPid) as KademliaProtocol
-                        val destId = GlobalProt.getNode(event.data as Int).getProtocol(dhtPid) as KademliaProtocol
-                        if (GlobalProt.hasJoinedSterile(event.data)) {
-
-                            return
-                        }
-                        childNodesSterile.add(event.data)
-                        GlobalProt.setSterileJoin(event.data)
-
-                        val msg = ConnectionRequest(
-                            sourceId.nodeId,
-                            destId.nodeId,
-                            node.id.toInt(),
-                            MsgTypes.CONN_SUCCESS_STERILE
-                        )
-                        sourceId.sendMessage(msg, myId)
                     }
-                }
-
-                if (event.type == MsgTypes.CONN_SUCCESS_STERILE) {
-                    println("Node ${node.id} successfully connected to Node: ${event.data} in its Sterile Tree")
+                    RPCResultPrimitive.STATUS_FAIL -> {
+                        val potentialParents = tmpStreamToAncestors[event.data]!!
+                        connectToAncestors(kademliaProt, event.data!!, potentialParents)
+                    }
                 }
             }
         }
-//        if (event is ProtocolOperation<*>) {
-//            println(event)
-//            println("id: ${event.id}, refId: ${event.refMsgId}, node: ${node.id}")
-//            val d = event.data
-//            println(d)
-//        }
     }
 
     companion object {
         private const val PAR_DHT = "dht"
+        private const val PAR_LIST_OP = "list"
     }
 }

@@ -11,5 +11,5 @@ import java.math.BigInteger
 class ConnectionRequest(srcNodeId: BigInteger, destNodeId: BigInteger, streamNodeData: StreamNodeData) :
     RPCPrimitive<StreamNodeData>(srcNodeId, destNodeId, streamNodeData)
 
-class ConnectionResult(requestOp: ConnectionRequest, status: Int = RPCResultPrimitive.STATUS_SUCCESS) :
-    RPCResultPrimitive<Int>(requestOp, status)
+class ConnectionResult(requestOp: ConnectionRequest, streamId: Int, status: Int = RPCResultPrimitive.STATUS_SUCCESS) :
+    RPCResultPrimitive<Int>(requestOp, streamId, status)
