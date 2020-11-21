@@ -3,6 +3,7 @@ package btp.p2p.flashcrowd.controller
 import btp.p2p.flashcrowd.activeNodes
 import btp.p2p.flashcrowd.messages.SwarmingStart
 import peersim.config.Configuration
+import peersim.core.CommonState
 import peersim.core.Control
 import peersim.core.Network
 import peersim.edsim.EDSimulator
@@ -13,10 +14,12 @@ import peersim.edsim.EDSimulator
 class DiffusionTrigger(prefix: String) : Control {
     private val protocolId = Configuration.getPid("$prefix.$PAR_PROT")
     private val startDelay = Configuration.getLong("$prefix.$PAR_TIME_DELAY")
-    private val startTime: Long = System.currentTimeMillis()
+    private val startTime: Long = CommonState.getTime()
+//  private val startTime: Long = System.currentTimeMillis()
 
     override fun execute(): Boolean {
-        if (System.currentTimeMillis() - startTime < startDelay) return false
+//      if (System.currentTimeMillis() - startTime < startDelay) return false
+        if (CommonState.getTime() - startTime < startDelay) return false
 
         Network::class.activeNodes().forEach { EDSimulator.add(0, SwarmingStart(), it, protocolId) }
         return false
