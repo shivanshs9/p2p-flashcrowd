@@ -1,7 +1,6 @@
 package btp.p2p.flashcrowd.init
 
 import btp.p2p.flashcrowd.messages.NetworkJoin
-import btp.p2p.flashcrowd.protocols.GlobalProt
 import peersim.config.Configuration
 import peersim.core.Node
 import peersim.dynamics.NodeInitializer
@@ -15,9 +14,6 @@ class InitNode(prefix: String) : NodeInitializer {
     override fun initialize(n: Node) {
         val kademliaProtocol = n.getProtocol(dhtPid) as KademliaProtocol
         EDSimulator.add(50, NetworkJoin(pid, kademliaProtocol.nodeId, n.id.toInt()), n, pid)
-
-        GlobalProt.setNode(n)
-        GlobalProt.globaladd(n.id.toInt())
     }
 
     companion object{
