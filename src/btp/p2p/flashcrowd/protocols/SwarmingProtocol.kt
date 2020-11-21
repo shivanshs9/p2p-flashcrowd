@@ -28,13 +28,10 @@ class SwarmingProtocol(private val prefix: String) : EDProtocol {
     // maps operation IDs to level
     private val pendingOps = mutableMapOf<Long, Int>()
     lateinit var substreams: List<MeshSubstream>
-    private var hasSwarmingStarted: Boolean = false
+    var hasSwarmingStarted: Boolean = false
+        private set
 
     override fun clone(): Any = SwarmingProtocol(prefix)
-
-    fun isSubstreamInitialized(): Boolean {
-        return this::substreams.isInitialized
-    }
 
     private fun fetchPotentialMeshParents(kademliaProt: KademliaProtocol, stream: MeshSubstream) {
         val streamNodeData = StreamNodeData(stream.streamId, kademliaProt.nodeId)
@@ -134,7 +131,7 @@ class SwarmingProtocol(private val prefix: String) : EDProtocol {
             is MeshConnectionResult -> {
                 val stream = substreams[event.data!!]
                 println("SWARM: connected for stream ${stream.streamId}")
-                stream.parents.add(StreamNodeData(stream.streamId, event.destNodeId))
+                stream.addParent(StreamNodeData(stream.streamId, event.destNodeId))
                 stream.potentialParents.removeIf { it.nodeId == event.srcNodeId }
                 connectToParents(kademliaProt, stream)
             }

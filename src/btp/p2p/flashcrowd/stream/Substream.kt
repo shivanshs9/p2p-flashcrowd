@@ -1,6 +1,7 @@
 package btp.p2p.flashcrowd.stream
 
 import btp.p2p.flashcrowd.messages.StreamNodeData
+import peersim.core.CommonState
 
 /**
  * Created by shivanshs9 on 20/11/20.
@@ -8,7 +9,11 @@ import btp.p2p.flashcrowd.messages.StreamNodeData
 open class Substream(val streamId: Int, var isFertile: Boolean) {
     var level: Int = 0
     val children: MutableList<StreamNodeData> = mutableListOf()
-    val parents: MutableList<StreamNodeData> = mutableListOf()
+    val parents: MutableList<Pair<Long, StreamNodeData>> = mutableListOf()
+
+    fun addParent(parent: StreamNodeData) {
+        parents.add(CommonState.getTime() to parent)
+    }
 }
 
 class MeshSubstream(stream: Substream) : Substream(stream.streamId, stream.isFertile) {

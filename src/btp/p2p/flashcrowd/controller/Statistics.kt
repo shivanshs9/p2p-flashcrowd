@@ -5,10 +5,13 @@ import btp.p2p.flashcrowd.activeNodes
 import btp.p2p.flashcrowd.protocols.FlashcrowdProtocol
 import btp.p2p.flashcrowd.protocols.SwarmingProtocol
 import btp.p2p.flashcrowd.stream.Substream
+import btp.p2p.flashcrowd.sumByLong
+import btp.p2p.flashcrowd.toInt
 import peersim.config.Configuration
 import peersim.core.CommonState
 import peersim.core.Control
 import peersim.core.Network
+import java.util.Collections.max
 import kotlin.math.ceil
 import kotlin.math.log10
 
@@ -18,12 +21,10 @@ class Statistics(prefix: String) : Control {
     private val swarmingid: Int = Configuration.getPid("$prefix.$PAR_SWARMING")
     private val dhtPid: Int = Configuration.getPid("$prefix.$PAR_DHT")
 
-    fun Boolean.toInt() = if (this) 1 else 0
-
     private fun isConnected(substream: List<Substream>): Pair<Int, Int> {
 
         val connectedStreams = substream.filter { (it.parents.size > 0) }
-        return Pair((connectedStreams.size > 0).toInt(), (connectedStreams.size == substream.size).toInt())
+        return Pair((connectedStreams.isNotEmpty()).toInt(), (connectedStreams.size == substream.size).toInt())
     }
 
     private fun maxhopCount(): Int {
@@ -34,6 +35,21 @@ class Statistics(prefix: String) : Control {
         ).toInt() + 1
     }
 
+    private fun streamConnectTime(all: Boolean): Long {
+        val condStreamConnected: (Substream) -> Boolean = { it.parents.isNotEmpty() }
+        val nodeProts = Network::class.activeNodes()
+            .map { (it.getProtocol(flashcrowdid) as FlashcrowdProtocol) }
+            .filter {
+                if (all) it.substreams.all(condStreamConnected)
+                else it.substreams.any(condStreamConnected)
+            }
+        if (nodeProts.isEmpty()) return 0
+        return nodeProts.sumByLong {
+            val connectTime = if (all) max(it.substreams.map { it.parents.first().first })
+            else it.substreams.first(condStreamConnected).parents.first().first
+            connectTime - it.joinTime
+        } / nodeProts.size
+    }
 
     override fun execute(): Boolean {
 
@@ -63,7 +79,7 @@ class Statistics(prefix: String) : Control {
 
 //      total bandwidth utilisation
         val allMeshSubStreams = Network::class.activeNodes()
-            .map { (it.getProtocol(swarmingid) as SwarmingProtocol) }.filter { it.isSubstreamInitialized() }
+            .map { (it.getProtocol(swarmingid) as SwarmingProtocol) }.filter { it.hasSwarmingStarted }
             .map { it.substreams }
         val totalBandwidth =
             allMeshSubStreams.sumByDouble { (it.sumByDouble { (it.children.size.toDouble() + it.parents.size.toDouble()) / Simulator.bandwidthK2 }) / it.size }
@@ -71,6 +87,8 @@ class Statistics(prefix: String) : Control {
 
 //      max hop count
         println("Maximum Hop Count: ${maxhopCount()}")
+        println("Avg. First Stream Connect Time: ${streamConnectTime(all = false)}")
+        println("Avg. All Stream Connect Time: ${streamConnectTime(all = true)}")
         println("\n--- End of Statistics ---\n")
         return false
     }

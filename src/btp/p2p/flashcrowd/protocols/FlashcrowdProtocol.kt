@@ -6,6 +6,7 @@ import btp.p2p.flashcrowd.Simulator
 import btp.p2p.flashcrowd.messages.*
 import btp.p2p.flashcrowd.stream.Substream
 import peersim.config.Configuration
+import peersim.core.CommonState
 import peersim.core.Network
 import peersim.core.Node
 import peersim.edsim.EDProtocol
@@ -35,6 +36,7 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             ).toInt() + 1
         }
     private val tmpStreamToAncestors: MutableMap<Int, MutableList<StreamNodeData>> = mutableMapOf()
+    var joinTime: Long = 0
 
     override fun clone(): Any = FlashcrowdProtocol(prefix)
 
@@ -113,6 +115,8 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
 
         when (event) {
             is NetworkJoin -> {
+                joinTime = CommonState.getTime()
+
                 val rank = event.data!!
                 val (fertileLevel, fertileIdx) = getFertileTreePlacement(rank)
 
@@ -245,7 +249,7 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     RPCResultPrimitive.STATUS_SUCCESS -> {
                         val streamId = event.data!!
                         println("CONNECT: Node ${node.id} successfully connected to stream: $streamId")
-                        substreams[streamId].parents.add(StreamNodeData(streamId, event.srcNodeId))
+                        substreams[streamId].addParent(StreamNodeData(streamId, event.srcNodeId))
                     }
                     RPCResultPrimitive.STATUS_FAIL -> {
                         println("CONNECT: Node ${node.id} failed to connect to stream: ${event.data}")

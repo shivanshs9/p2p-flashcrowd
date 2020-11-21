@@ -13,7 +13,7 @@ class InitNode(prefix: String) : NodeInitializer {
 
     override fun initialize(n: Node) {
         val kademliaProtocol = n.getProtocol(dhtPid) as KademliaProtocol
-        EDSimulator.add(50, NetworkJoin(pid, kademliaProtocol.nodeId, n.id.toInt()), n, pid)
+        EDSimulator.add(0, NetworkJoin(pid, kademliaProtocol.nodeId, n.id.toInt()), n, pid)
     }
 
     companion object{
