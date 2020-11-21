@@ -32,6 +32,10 @@ class SwarmingProtocol(private val prefix: String) : EDProtocol {
 
     override fun clone(): Any = SwarmingProtocol(prefix)
 
+    fun isSubstreamInitialized(): Boolean {
+        return this::substreams.isInitialized
+    }
+
     private fun fetchPotentialMeshParents(kademliaProt: KademliaProtocol, stream: MeshSubstream) {
         val streamNodeData = StreamNodeData(stream.streamId, kademliaProt.nodeId)
         val currLvl = stream.level

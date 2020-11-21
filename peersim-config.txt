@@ -52,6 +52,7 @@ init.nw InitNetwork
 control.stats Statistics
 {
     flashcrowd flashcrowd
+    swarm swarm
     dht dht
     step SECOND
 }
