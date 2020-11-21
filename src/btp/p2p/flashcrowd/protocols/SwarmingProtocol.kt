@@ -28,6 +28,7 @@ class SwarmingProtocol(private val prefix: String) : EDProtocol {
     // maps operation IDs to level
     private val pendingOps = mutableMapOf<Long, Int>()
     lateinit var substreams: List<MeshSubstream>
+    private var hasSwarmingStarted: Boolean = false
 
     override fun clone(): Any = SwarmingProtocol(prefix)
 
@@ -73,6 +74,8 @@ class SwarmingProtocol(private val prefix: String) : EDProtocol {
 
         when (event) {
             is SwarmingStart -> {
+                if (hasSwarmingStarted) return
+                hasSwarmingStarted = true
                 substreams = flashcrowdProt.substreams.map { MeshSubstream(it) }
                 substreams.forEach {
                     fetchPotentialMeshParents(kademliaProt, it)
