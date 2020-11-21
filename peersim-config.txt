@@ -27,6 +27,11 @@ protocol.flashcrowd FlashcrowdProtocol
 {
     dht dht
 }
+protocol.swarm SwarmingProtocol
+{
+    dht dht
+    flashcrowd flashcrowd
+}
 
 ##### Initialization #####
 init.nodeId CustomDistribution
@@ -91,6 +96,13 @@ control.churn Turbulence
     p_rem 1
     p_add 0
 
+    step SECOND
+}
+
+control.swarm_trigger DiffusionTrigger
+{
+    protocol swarm
+    delay_start 10 * SECOND
     step SECOND
 }
 

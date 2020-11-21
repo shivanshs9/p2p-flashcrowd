@@ -243,8 +243,9 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
             is ConnectionResult -> {
                 when (event.status) {
                     RPCResultPrimitive.STATUS_SUCCESS -> {
-                        println("CONNECT: Node ${node.id} successfully connected to stream: ${event.data}")
-
+                        val streamId = event.data!!
+                        println("CONNECT: Node ${node.id} successfully connected to stream: $streamId")
+                        substreams[streamId].parents.add(StreamNodeData(streamId, event.srcNodeId))
                     }
                     RPCResultPrimitive.STATUS_FAIL -> {
                         println("CONNECT: Node ${node.id} failed to connect to stream: ${event.data}")

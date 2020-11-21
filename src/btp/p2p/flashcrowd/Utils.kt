@@ -12,6 +12,8 @@ object MsgTypes {
     val CONN_FERTILE_TREE = "fertile".toAscii()
     val CONN_STERILE_TREE = "sterile".toAscii()
 
+    val SWM_FETCH_PEERS = "swm_peers".toAscii()
+
     const val FIND_VAL = 1
     const val STORE_VAL = 2
     const val FIND_VAL_STERILE = 3
@@ -30,6 +32,7 @@ object Constants {
 
     const val fetchTimeout: Long = 2000
     const val globalTimeout: Long = 4000
+    const val timeoutFetchSwarmingPeers = 3000L
     const val globalDelay: Long = 500
     const val SterileDelay: Long = 7500
 }
