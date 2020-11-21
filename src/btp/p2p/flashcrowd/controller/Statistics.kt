@@ -52,14 +52,13 @@ class Statistics(prefix: String) : Control {
     }
 
     override fun execute(): Boolean {
+        System.err.println("\n--- Statistics at Time: ${CommonState.getTime()} ---\n")
 
-        println("\n--- Statistics at Time: ${CommonState.getTime()} ---\n")
-
-        println("Nodes in Overlay: ${Network.size()}")
+        System.err.println("Nodes in Overlay: ${Network.size()}")
 
 //      churn rate
         val churnRatio = 1 - ((Network::class.activeNodes().size.toDouble()) / Network.size())
-        println("Churn Ratio: $churnRatio")
+        System.err.println("Churn Ratio: $churnRatio")
 
 //      overlay connection stability
         val allSubStreams = Network::class.activeNodes()
@@ -68,14 +67,14 @@ class Statistics(prefix: String) : Control {
 //      val allSubStreams = (0 until Network.size()).mapNotNull { Network.get(it)?.getProtocol(pid) }.map{ isConnected((it as FlashcrowdProtocol).substreams) }
         val connStability = connectionStatus.sumBy { it.first }
         val overStability = connectionStatus.sumBy { it.second }
-        println("Fraction of Connected Peers: " + (connStability.toDouble() / allSubStreams.size))
-        println("Fraction of Stable Peers: " + (overStability.toDouble() / allSubStreams.size))
+        System.err.println("Fraction of Connected Peers: " + (connStability.toDouble() / allSubStreams.size))
+        System.err.println("Fraction of Stable Peers: " + (overStability.toDouble() / allSubStreams.size))
 
 //      outgoing bandwidth utilisation - flashcrowd
 
         val outBandwidth =
             allSubStreams.sumByDouble { (it.sumByDouble { it.children.size.toDouble() / Simulator.bandwidthK1 }) / it.size }
-        println("Average Utilized Outgoing Bandwidth: " + (outBandwidth / allSubStreams.size))
+        System.err.println("Average Utilized Outgoing Bandwidth: " + (outBandwidth / allSubStreams.size))
 
 //      total bandwidth utilisation
         val allMeshSubStreams = Network::class.activeNodes()
@@ -83,13 +82,15 @@ class Statistics(prefix: String) : Control {
             .map { it.substreams }
         val totalBandwidth =
             allMeshSubStreams.sumByDouble { (it.sumByDouble { (it.children.size.toDouble() + it.parents.size.toDouble()) / Simulator.bandwidthK2 }) / it.size }
-        println("Average Utilized Total Bandwidth: " + (totalBandwidth / allMeshSubStreams.size))
+        System.err.println("Average Utilized Total Bandwidth: " + (totalBandwidth / allMeshSubStreams.size))
 
 //      max hop count
-        println("Maximum Hop Count: ${maxhopCount()}")
-        println("Avg. First Stream Connect Time: ${streamConnectTime(all = false)}")
-        println("Avg. All Stream Connect Time: ${streamConnectTime(all = true)}")
-        println("\n--- End of Statistics ---\n")
+        System.err.println("Maximum Hop Count: ${maxhopCount()}")
+
+//        stream connect time
+        System.err.println("Avg. First Stream Connect Time: ${streamConnectTime(all = false)}")
+        System.err.println("Avg. All Stream Connect Time: ${streamConnectTime(all = true)}")
+        System.err.println("\n--- End of Statistics ---\n")
         return false
     }
 

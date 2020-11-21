@@ -4,7 +4,7 @@ SECOND 1000
 ##### Global Simulation Parameters #####
 random.seed 1234567890
 simulation.experiments 1
-simulation.endtime 40 * SECOND
+simulation.endtime 50 * SECOND
 simulation.logtime 5 * SECOND
 network.size 1
 
@@ -69,12 +69,13 @@ control.flashcrowd Turbulence
 {
     protocol dht
     transport tr
-    maxsize 500
-    max_change 30
+    maxsize 2000
+    max_change 80
     p_rem 0
     p_add 1
 
     step SECOND
+    until 30 * SECOND
 
     init.0 CustomDist
     {
@@ -87,34 +88,30 @@ control.flashcrowd Turbulence
     }
 }
 
-control.handler FlashcrowdController
-{
-    step SECOND
-    dht dht
-    protocol flashcrowd
-}
-
 control.churn Turbulence
 {
     protocol dht
     transport tr
-    minsize 3000
-    delay_start 10 * SECOND
-    max_change 10
+    minsize 5000
+    max_change 40
     p_rem 1
     p_add 0
     step SECOND
+
+    from 10 * SECOND
+    until 30 * SECOND
 }
 
 control.swarm_trigger DiffusionTrigger
 {
     protocol swarm
-    delay_start 10 * SECOND
+
+    from 10 * SECOND
     step SECOND
 }
 
 ##### Livestream P2P #####
 btp.stream.substreams 7
 btp.system.capacity 10
-btp.peer.capacity.outgoing 4
+btp.peer.capacity.outgoing 3
 btp.peer.capacity.total 6
