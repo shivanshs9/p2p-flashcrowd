@@ -2,6 +2,7 @@ package btp.p2p.flashcrowd.stream
 
 import btp.p2p.flashcrowd.messages.StreamNodeData
 import peersim.core.CommonState
+import java.math.BigInteger
 
 /**
  * Created by shivanshs9 on 20/11/20.
@@ -14,6 +15,8 @@ open class Substream(val streamId: Int, var isFertile: Boolean) {
     fun addParent(parent: StreamNodeData) {
         parents.add(CommonState.getTime() to parent)
     }
+
+    fun removeParent(parentId: BigInteger) = parents.removeIf { it.second.nodeId == parentId }
 }
 
 class MeshSubstream(stream: Substream) : Substream(stream.streamId, stream.isFertile) {

@@ -244,6 +244,20 @@ class FlashcrowdProtocol(val prefix: String) : EDProtocol {
                     }
                 }
             }
+            is DisconnectionRequest -> {
+                val oldParent = event.srcNodeId
+                val newParent = event.data!!
+                val stream = substreams[newParent.streamId]
+                stream.level++
+                stream.removeParent(oldParent)
+                val request = ConnectionRequest(
+                    kademliaProt.nodeId,
+                    newParent.nodeId,
+                    StreamNodeData(stream.streamId, kademliaProt.nodeId),
+                    stream.isFertile
+                )
+                kademliaProt.sendMessage(request, protocolPid = myId)
+            }
             is ConnectionResult -> {
                 when (event.status) {
                     RPCResultPrimitive.STATUS_SUCCESS -> {
